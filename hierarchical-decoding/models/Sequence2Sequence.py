@@ -1,72 +1,66 @@
 from layers.Decoder import Decoder
 from layers.Encoder import Encoder
+from layers.Attention import Attention
 import torch
 import torch.nn as nn
 
 class Seq2Seq(nn.Module):
-    def __init__(self, 
-                 encoder, 
-                 decoder, 
-                 src_pad_idx, 
-                 trg_pad_idx, 
-                 device):
+    def __init__(self, encoder, decoder, src_pad_idx, device):
         super().__init__()
         
         self.encoder = encoder
         self.decoder = decoder
         self.src_pad_idx = src_pad_idx
-        self.trg_pad_idx = trg_pad_idx
         self.device = device
         
-    def make_src_mask(self, src):
+    def create_mask(self, src):
+        mask = (src != self.src_pad_idx).permute(1, 0)
+        return mask
         
-        #src = [batch size, src len]
+    def forward(self, src, trg, teacher_forcing_ratio = 0.5):
         
-        src_mask = (src != self.src_pad_idx).unsqueeze(1).unsqueeze(2)
+        #src = [src len, batch size]
+        #src_len = [batch size]
+        #trg = [trg len, batch size]
+        #teacher_forcing_ratio is probability to use teacher forcing
+        #e.g. if teacher_forcing_ratio is 0.75 we use teacher forcing 75% of the time
+                    
+        batch_size = src.shape[1]
+        trg_len = trg.shape[0]
+        trg_vocab_size = self.decoder.output_dim
+        
+        #tensor to store decoder outputs
+        outputs = torch.zeros(trg_len, batch_size, trg_vocab_size).to(self.device)
+        
+        #encoder_outputs is all hidden states of the input sequence, back and forwards
+        #hidden is the final forward and backward hidden states, passed through a linear layer
+        encoder_outputs, hidden = self.encoder(src, src_len)
+                
+        #first input to the decoder is the <sos> tokens
+        input = trg[0,:]
+        
+        mask = self.create_mask(src)
 
-        #src_mask = [batch size, 1, 1, src len]
-
-        return src_mask
-    
-    def make_trg_mask(self, trg):
-        
-        #trg = [batch size, trg len]
-        
-        trg_pad_mask = (trg != self.trg_pad_idx).unsqueeze(1).unsqueeze(2)
-        
-        #trg_pad_mask = [batch size, 1, 1, trg len]
-        
-        trg_len = trg.shape[1]
-        
-        trg_sub_mask = torch.tril(torch.ones((trg_len, trg_len), device = self.device)).bool()
-        
-        #trg_sub_mask = [trg len, trg len]
+        #mask = [batch size, src len]
+                
+        for t in range(1, trg_len):
             
-        trg_mask = trg_pad_mask & trg_sub_mask
-        
-        #trg_mask = [batch size, 1, trg len, trg len]
-        
-        return trg_mask
-
-    def forward(self, src, trg):
-        
-        #src = [batch size, src len]
-        #trg = [batch size, trg len]
-                
-        src_mask = self.make_src_mask(src)
-        trg_mask = self.make_trg_mask(trg)
-        
-        #src_mask = [batch size, 1, 1, src len]
-        #trg_mask = [batch size, 1, trg len, trg len]
-        
-        enc_src = self.encoder(src, src_mask)
-        
-        #enc_src = [batch size, src len, hid dim]
-                
-        output, attention = self.decoder(trg, enc_src, trg_mask, src_mask)
-        
-        #output = [batch size, trg len, output dim]
-        #attention = [batch size, n heads, trg len, src len]
-        
-        return output, attention
-
+            #insert input token embedding, previous hidden state, all encoder hidden states 
+            #  and mask
+            #receive output tensor (predictions) and new hidden state
+            output, hidden, _ = self.decoder(input, hidden, encoder_outputs, mask)
+            
+            #place predictions in a tensor holding predictions for each token
+            outputs[t] = output
+            
+            #decide if we are going to use teacher forcing or not
+            teacher_force = random.random() < teacher_forcing_ratio
+            
+            #get the highest predicted token from our predictions
+            top1 = output.argmax(1) 
+            
+            #if teacher forcing, use actual next token as next input
+            #if not, use predicted token
+            input = trg[t] if teacher_force else top1
+            
+        return outputs
