@@ -41,6 +41,8 @@ parser.add_argument(
   '-max-length', '--max_length', type=int, required=False, default=180, help='Max length in encoder/decoder')
 
 parser.add_argument(
+  '-embedding-size', '--embedding_size', type=int, required=False, help='Size of embedding layer')
+parser.add_argument(
   '-hidden-size', '--hidden_size', type=int, required=False, help='Size of hidden layer output')
 parser.add_argument(
   '-enc-filter-size', '--encoder_ff_size', type=int, required=False, help='Size of FFN Filters (Encoder)')
