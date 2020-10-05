@@ -88,7 +88,7 @@ def build_model(args, source_vocabs, target_vocabs, device, max_length , encoder
 	'''
 
 	input_dim = source_vocabs[0].len()
-	enc = Encoder(input_dim, 
+	enc = EncoderRNN(input_dim, 
 		args.embedding_size, 
 		args.hidden_size, 
 		args.hidden_size, 
@@ -102,12 +102,12 @@ def build_model(args, source_vocabs, target_vocabs, device, max_length , encoder
 
 	for target_vocab in target_vocabs:
 		output_dim = target_vocab.len()
-		dec = Decoder(output_dim, 
+		dec = DecoderRNN(output_dim, 
 				args.embedding_size, 
 				args.hidden_size, 
 				args.hidden_size,  
 				args.decoder_dropout,
-				atte).to(device)
+				attn).to(device)
 
 		if args.tie_embeddings:
 			dec.embedding = enc.embedding
@@ -280,10 +280,9 @@ def train(args):
 		print("Building model")
 		seq2seq_model = build_model(args, source_vocabs, target_vocabs, device, max_length)
 
-	print(f'The Transformer has {count_parameters(multitask_model):,} trainable parameters')
-	print(f'The Encoder has {count_parameters(multitask_model.encoder):,} trainable parameters')
-	for index, decoder in enumerate(multitask_model.decoders):
-		print(f'The Decoder {index+1} has {count_parameters(decoder):,} trainable parameters')
+	print(f'The Transformer has {count_parameters(seq2seq_model):,} trainable parameters')
+	print(f'The Encoder has {count_parameters(seq2seq_model.encoder):,} trainable parameters')
+	print(f'The Decoder has {count_parameters(seq2seq_model.decoder):,} trainable parameters')
 
 
 	# Defining CrossEntropyLoss as default
