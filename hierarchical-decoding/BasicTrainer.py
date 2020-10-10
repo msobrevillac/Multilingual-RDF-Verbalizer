@@ -326,7 +326,7 @@ def train(args):
 					print(f'The loss decreased from {best_valid_loss[task_id]:.3f} to {valid_loss:.3f} in the task {task_id}... saving checkpoint')
 					patience = 30
 					best_valid_loss[task_id] = valid_loss
-					torch.save(multitask_model.state_dict(), args.save_dir + 'model.pt')
+					torch.save(seq2seq_model.state_dict(), args.save_dir + 'model.pt')
 					print("Saved model.pt")
 				else:
 					if n_tasks == 1:
