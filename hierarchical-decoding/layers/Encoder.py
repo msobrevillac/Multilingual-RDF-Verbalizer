@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from layers.EncoderLayer import EncoderLayer
 from layers.PositionalEncoding import PositionalEncoding
-import utils.constants import PAD_IDX
+import utils.constants as constants
 
 class Encoder(nn.Module):
     def __init__(self, 
@@ -66,7 +66,7 @@ class EncoderRNN(nn.Module):
         """
         packed = pack_padded_sequence(x, lengths, batch_first=True, enforce_sorted = False)
         output, final = self.rnn(packed)
-        output, _ = pad_packed_sequence(output, batch_first=True, total_length=self.max_length, padding_value=PAD_IDX)
+        output, _ = pad_packed_sequence(output, batch_first=True, total_length=self.max_length, padding_value=constants.PAD_IDX)
 
         # we need to manually concatenate the final states for both directions
         fwd_final = final[0:final.size(0):2]
