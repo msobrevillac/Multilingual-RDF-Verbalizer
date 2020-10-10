@@ -7,7 +7,7 @@ class Embedding(nn.Module):
     """A conditional RNN decoder with attention."""
     
     def __init__(self, input_size, emb_size, dropout=0.0, norm=False):
-        super(DecoderRNN, self).__init__()
+        super(Embedding, self).__init__()
         self.embedding = nn.Embedding(input_size, emb_size)
 
         self.dropout = nn.Dropout(dropout)
