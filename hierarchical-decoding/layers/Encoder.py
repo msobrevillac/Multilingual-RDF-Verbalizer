@@ -52,12 +52,14 @@ class Encoder(nn.Module):
 
 class EncoderRNN(nn.Module):
     """Encodes a sequence of word embeddings"""
-    def __init__(self, input_size, hidden_size, num_layers=1, dropout=0., max_length = 100):
+    def __init__(self, input_size, hidden_size, num_layers=1, dropout=0., norm=False max_length = 100):
         super(EncoderRNN, self).__init__()
         self.num_layers = num_layers
         self.rnn = nn.GRU(input_size, hidden_size, num_layers, 
                           batch_first=True, bidirectional=True, dropout=dropout)
         self.max_length = max_length
+        self.layer_norm = nn.LayerNorm(hidden_size)
+        self.norm = norm
         
     def forward(self, x, mask, lengths):
         """
@@ -70,8 +72,12 @@ class EncoderRNN(nn.Module):
         output, _ = pad_packed_sequence(output, batch_first=True, total_length=self.max_length, padding_value=constants.PAD_IDX)
 
         # we need to manually concatenate the final states for both directions
-        fwd_final = final[0:final.size(0):2]
-        bwd_final = final[1:final.size(0):2]
+        if self.norm:
+            fwd_final = self.layer_norm(final[0:final.size(0):2])
+            bwd_final = self.layer_norm(final[1:final.size(0):2])
+        else:
+            fwd_final = final[0:final.size(0):2]
+            bwd_final = final[1:final.size(0):2]
         final = torch.cat([fwd_final, bwd_final], dim=2)  # [num_layers, batch, 2*dim]
 
         return output, final

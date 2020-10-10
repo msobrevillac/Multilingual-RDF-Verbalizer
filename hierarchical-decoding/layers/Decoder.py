@@ -63,7 +63,7 @@ class DecoderRNN(nn.Module):
     """A conditional RNN decoder with attention."""
     
     def __init__(self, emb_size, hidden_size, attention, num_layers=1, dropout=0.5,
-                 bridge=False):
+                 bridge=False, norm=False):
         super(DecoderRNN, self).__init__()
         
         self.hidden_size = hidden_size
@@ -80,6 +80,9 @@ class DecoderRNN(nn.Module):
         self.dropout_layer = nn.Dropout(p=dropout)
         self.pre_output_layer = nn.Linear(hidden_size + 2*hidden_size + emb_size,
                                           hidden_size, bias=False)
+
+        self.layer_norm = nn.LayerNorm(hidden_size)
+        self.norm = norm
         
     def forward_step(self, prev_embed, encoder_hidden, src_mask, proj_key, hidden):
         """Perform a single decoder step (1 word)"""
@@ -93,6 +96,9 @@ class DecoderRNN(nn.Module):
         # update rnn hidden state
         rnn_input = torch.cat([prev_embed, context], dim=2)
         output, hidden = self.rnn(rnn_input, hidden)
+
+        if self.norm:
+            hidden = self.layer_norm(hidden)
         
         pre_output = torch.cat([prev_embed, output, context], dim=2)
         pre_output = self.dropout_layer(pre_output)
