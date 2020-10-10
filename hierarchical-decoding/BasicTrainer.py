@@ -279,7 +279,10 @@ def train(args):
 		print("Building model")
 		seq2seq_model = build_model(args, source_vocabs, target_vocabs, device, max_length)
 
-	print(f'The Transformer has {count_parameters(seq2seq_model):,} trainable parameters')
+	print(f'The Sequence-to-Sequence has {count_parameters(seq2seq_model):,} trainable parameters')
+	print(f'The Source Embeddings has {count_parameters(seq2seq_model.src_embed):,} trainable parameters')
+	print(f'The Target Embeddings has {count_parameters(seq2seq_model.trg_embed):,} trainable parameters')
+	print(f'The Generator has {count_parameters(seq2seq_model.generator):,} trainable parameters')
 	print(f'The Encoder has {count_parameters(seq2seq_model.encoder):,} trainable parameters')
 	print(f'The Decoder has {count_parameters(seq2seq_model.decoder):,} trainable parameters')
 

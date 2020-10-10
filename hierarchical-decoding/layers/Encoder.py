@@ -3,6 +3,7 @@ import torch.nn as nn
 from layers.EncoderLayer import EncoderLayer
 from layers.PositionalEncoding import PositionalEncoding
 import utils.constants as constants
+from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
 class Encoder(nn.Module):
     def __init__(self, 
