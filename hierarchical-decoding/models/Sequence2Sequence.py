@@ -4,63 +4,32 @@ from layers.Attention import Attention
 import torch
 import torch.nn as nn
 
-class Seq2Seq(nn.Module):
-    def __init__(self, encoder, decoder, src_pad_idx, device):
-        super().__init__()
-        
+class Seq2seq(nn.Module):
+    """
+    A standard Encoder-Decoder architecture. Base for this and many 
+    other models.
+    """
+    def __init__(self, encoder, decoder, src_embed, trg_embed, generator, tie_embeddings=False):
+        super(Seq2seq, self).__init__()
         self.encoder = encoder
         self.decoder = decoder
-        self.src_pad_idx = src_pad_idx
-        self.device = device
-        
-    def create_mask(self, src):
-        mask = (src != self.src_pad_idx).permute(1, 0)
-        return mask
-        
-    def forward(self, src, trg, teacher_forcing_ratio = 0.5):
-        
-        #src = [src len, batch size]
-        #src_len = [batch size]
-        #trg = [trg len, batch size]
-        #teacher_forcing_ratio is probability to use teacher forcing
-        #e.g. if teacher_forcing_ratio is 0.75 we use teacher forcing 75% of the time
-                    
-        batch_size = src.shape[1]
-        trg_len = trg.shape[0]
-        trg_vocab_size = self.decoder.output_dim
-        
-        #tensor to store decoder outputs
-        outputs = torch.zeros(trg_len, batch_size, trg_vocab_size).to(self.device)
-        
-        #encoder_outputs is all hidden states of the input sequence, back and forwards
-        #hidden is the final forward and backward hidden states, passed through a linear layer
-        encoder_outputs, hidden = self.encoder(src, src_len)
-                
-        #first input to the decoder is the <sos> tokens
-        input = trg[0,:]
-        
-        mask = self.create_mask(src)
+        self.src_embed = src_embed
+        self.trg_embed = trg_embed
+        self.generator = generator
 
-        #mask = [batch size, src len]
-                
-        for t in range(1, trg_len):
-            
-            #insert input token embedding, previous hidden state, all encoder hidden states 
-            #  and mask
-            #receive output tensor (predictions) and new hidden state
-            output, hidden, _ = self.decoder(input, hidden, encoder_outputs, mask)
-            
-            #place predictions in a tensor holding predictions for each token
-            outputs[t] = output
-            
-            #decide if we are going to use teacher forcing or not
-            teacher_force = random.random() < teacher_forcing_ratio
-            
-            #get the highest predicted token from our predictions
-            top1 = output.argmax(1) 
-            
-            #if teacher forcing, use actual next token as next input
-            #if not, use predicted token
-            input = trg[t] if teacher_force else top1
-            
-        return outputs
+        if tie_embeddings:
+            self.trg_embed = self.src_embed
+            self.generator.proj.weight = self.src_embed.weight
+        
+    def forward(self, src, trg, src_mask, trg_mask, src_lengths, trg_lengths):
+        """Take in and process masked src and target sequences."""
+        encoder_hidden, encoder_final = self.encode(src, src_mask, src_lengths)
+        return self.decode(encoder_hidden, encoder_final, src_mask, trg, trg_mask)
+    
+    def encode(self, src, src_mask, src_lengths):
+        return self.encoder(self.src_embed(src), src_mask, src_lengths)
+    
+    def decode(self, encoder_hidden, encoder_final, src_mask, trg, trg_mask,
+               decoder_hidden=None):
+        return self.decoder(self.trg_embed(trg), encoder_hidden, encoder_final,
+                            src_mask, trg_mask, hidden=decoder_hidden)

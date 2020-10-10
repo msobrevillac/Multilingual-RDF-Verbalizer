@@ -2,7 +2,7 @@
 from utils.vocab import Vocab
 from utils.util import initialize_weights, set_seed, count_parameters, save_params, build_vocab
 import utils.constants as constants
-from utils.loss import LabelSmoothing, LossCompute
+from utils.loss_new import LabelSmoothing, LossCompute
 from utils.optimizer import NoamOpt
 
 from Dataloader import ParallelDataset, get_dataloader
@@ -11,7 +11,8 @@ from Translate import translate
 from models.Sequence2Sequence import Seq2Seq
 from layers.Encoder import EncoderRNN
 from layers.Decoder import DecoderRNN
-from layers.Attention import Attention
+from layers.Decoder import Generator
+from layers.Attention import BahdanauAttention
 
 import torch
 import torch.nn as nn
@@ -88,36 +89,44 @@ def build_model(args, source_vocabs, target_vocabs, device, max_length , encoder
 	'''
 
 	input_dim = source_vocabs[0].len()
-	enc = EncoderRNN(input_dim, 
-		args.embedding_size, 
+
+	enc = EncoderRNN(args.embedding_size, 
 		args.hidden_size, 
-		args.hidden_size, 
-		args.encoder_dropout).to(device)
+		args.encoder_layer, 
+		args.encoder_dropout, 
+		args.max_length).to(device)
 	if encoder is None:
 		enc.apply(initialize_weights);
 	else:
 		enc.load_state_dict(encoder)
 
-	attn = Attention(args.hidden_size, args.hidden_size)
+	attention = BahdanauAttention(hidden_size)
 
-	for target_vocab in target_vocabs:
-		output_dim = target_vocab.len()
-		dec = DecoderRNN(output_dim, 
-				args.embedding_size, 
-				args.hidden_size, 
-				args.hidden_size,  
-				args.decoder_dropout,
-				attn).to(device)
+	output_dim = target_vocab.len()
+	dec = DecoderRNN(args.embedding_size, 
+			args.hidden_size, 
+			attention, 
+			args.decoder_layer,  
+			args.decoder_dropout,
+			attention).to(device)
 
-		if args.tie_embeddings:
-			dec.embedding = enc.embedding
-			dec.fc_out.weight = enc.embedding.weight
+		#if args.tie_embeddings:
+		#	dec.embedding = enc.embedding
+		#	dec.fc_out.weight = enc.embedding.weight
 
-		dec.apply(initialize_weights);
+	dec.apply(initialize_weights);
 
-	model = Seq2Seq(enc, dec, constants.PAD_IDX, device).to(device)
+	if args.tie_embeddings:
+        model = Seq2seq(enc, dec, nn.Embedding(input_dim, args.embedding_size), 
+			nn.Embedding(output_dime, args.embedding_size), Generator(args.hidden_size, output_dim), True)
+	else:
+        model = Seq2seq(enc, dec, nn.Embedding(input_dim, args.embedding_size), 
+			nn.Embedding(output_dime, args.embedding_size), Generator(args.hidden_size, output_dim))
+
+	model.to(device)
 
 	return model
+
 
 def train_step(model, loader, loss_compute, device, task_id = 0):
 	'''
@@ -131,27 +140,18 @@ def train_step(model, loader, loss_compute, device, task_id = 0):
 
 	model.train()
 
-	(src, tgt) = next(iter(loader))
+	(src, tgt, src_mask, tgt_mask, src_lengths, tgt_lengths) = next(iter(loader))
 
 	src = src.to(device)
 	tgt = tgt.to(device)
+	src_mask = src_mask.to(device)
+	tgt_mask = tgt_mask.to(device)
 
-	output = model(src, tgt)
-        
-	output_dim = output.shape[-1]
-	output = output.contiguous().view(-1, output_dim)
-	tgt = tgt[:, 1:].contiguous().view(-1)
+	out, _, pre_output = model.forward(src, tgt,
+								src_mask, tgt_mask,
+								src_lengths, tgt_lengths)
 
-	#output, _ = model(src, tgt[:,:-1], task_id=task_id)        
-	#output = [batch size, tgt len - 1, output dim]
-	#tgt = [batch size, tgt len]
-	#output_dim = output.shape[-1]
-	#output = output.contiguous().view(-1, output_dim)
-	#tgt = tgt[:,1:].contiguous().view(-1)
-	#output = [batch size * tgt len - 1, output dim]
-	#tgt = [batch size * tgt len - 1]
-
-	loss = loss_compute(output, tgt)
+	loss = loss_compute(pre_output, tgt)
 
 	return loss
 
@@ -259,7 +259,6 @@ def train(args):
 
 	save_params(args, args.save_dir + "args.json")
 
-	# source_vocabs, target_vocabs = build_vocab(args.train_source, args.train_target, mtl=mtl)
 
 	print("Building training set and dataloaders")
 	train_loaders = build_dataset(args.train_source, args.train_target, batch_size, \
@@ -309,7 +308,7 @@ def train(args):
 		for _iter in range(1, args.steps + 1):
 
 			train_loss = train_step(seq2seq_model, train_loaders[task_id], \
-                       LossCompute(criterions[task_id], model_opts[task_id]), device, task_id = task_id)
+                       LossCompute(seq2seq_model.generator, criterions[task_id], model_opts[task_id]), device)
 
 			print_loss_total += train_loss
 

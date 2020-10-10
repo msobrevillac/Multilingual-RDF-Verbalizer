@@ -1,39 +1,47 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
-class Attention(nn.Module):
-    def __init__(self, enc_hid_dim, dec_hid_dim):
-        super().__init__()
+class BahdanauAttention(nn.Module):
+    """Implements Bahdanau (MLP) attention"""
+    
+    def __init__(self, hidden_size, key_size=None, query_size=None):
+        super(BahdanauAttention, self).__init__()
         
-        self.attn = nn.Linear((enc_hid_dim * 2) + dec_hid_dim, dec_hid_dim)
-        self.v = nn.Linear(dec_hid_dim, 1, bias = False)
-        
-    def forward(self, hidden, encoder_outputs, mask):
-        
-        #hidden = [batch size, dec hid dim]
-        #encoder_outputs = [src len, batch size, enc hid dim * 2]
-        
-        batch_size = encoder_outputs.shape[1]
-        src_len = encoder_outputs.shape[0]
-        
-        #repeat decoder hidden state src_len times
-        hidden = hidden.unsqueeze(1).repeat(1, src_len, 1)
-  
-        encoder_outputs = encoder_outputs.permute(1, 0, 2)
-        
-        #hidden = [batch size, src len, dec hid dim]
-        #encoder_outputs = [batch size, src len, enc hid dim * 2]
-        
-        energy = torch.tanh(self.attn(torch.cat((hidden, encoder_outputs), dim = 2))) 
-        
-        #energy = [batch size, src len, dec hid dim]
+        # We assume a bi-directional encoder so key_size is 2*hidden_size
+        key_size = 2 * hidden_size if key_size is None else key_size
+        query_size = hidden_size if query_size is None else query_size
 
-        attention = self.v(energy).squeeze(2)
+        self.key_layer = nn.Linear(key_size, hidden_size, bias=False)
+        self.query_layer = nn.Linear(query_size, hidden_size, bias=False)
+        self.energy_layer = nn.Linear(hidden_size, 1, bias=False)
         
-        #attention = [batch size, src len]
+        # to store attention scores
+        self.alphas = None
         
-        attention = attention.masked_fill(mask == 0, -1e10)
-        
-        return F.softmax(attention, dim = 1)
+    def forward(self, query=None, proj_key=None, value=None, mask=None):
+        assert mask is not None, "mask is required"
 
+        # We first project the query (the decoder state).
+        # The projected keys (the encoder states) were already pre-computated.
+        query = self.query_layer(query)
+        
+        # Calculate scores.
+        scores = self.energy_layer(torch.tanh(query + proj_key))
+        scores = scores.squeeze(2).unsqueeze(1)
+        #print(scores)
+        
+        # Mask out invalid positions.
+        # The mask marks valid positions so we invert it using `mask & 0`.
+        #print(mask.size())
+        scores.data.masked_fill_(mask == 1, -float('inf'))
 
+        # Turn scores to probabilities.
+        alphas = F.softmax(scores, dim=-1)
+        self.alphas = alphas        
+        
+        # The context vector is the weighted sum of the values.
+        context = torch.bmm(alphas, value)
+        
+        # context shape: [B, 1, 2D], alphas shape: [B, 1, M]
+        return context, alphas

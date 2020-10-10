@@ -43,8 +43,26 @@ class ParallelDataset(Dataset):
 		tgt_tokens_ids = self.target_vocab.convert_tokens_to_ids(tgt_tokens)
 		tgt_tokens_ids_tensor = torch.tensor(tgt_tokens_ids)
 
+		# Add to handle GRU
 
-		return src_tokens_ids_tensor, tgt_tokens_ids_tensor
+		src_mask = [0 if "<pad>" == token else 1 for token in src_tokens]
+		tgt_mask = [0 if "<pad>" == token else 1 for token in tgt_tokens]
+
+		src_length = 0
+		for token in src_tokens:
+			if token != "<pad>":
+				src_length += 1
+
+		tgt_length = 0
+		for token in tgt_tokens:
+			if token != "<pad>":
+				tgt_length += 1
+
+		src_mask = torch.tensor(src_mask).unsqueeze(-2)
+		tgt_mask = torch.tensor(tgt_mask)
+
+
+		return src_tokens_ids_tensor, tgt_tokens_ids_tensor, src_mask, tgt_mask, src_length, tgt_length
 
 
 	def read_file(self, filename):

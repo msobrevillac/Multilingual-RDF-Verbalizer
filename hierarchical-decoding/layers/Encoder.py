@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from layers.EncoderLayer import EncoderLayer
 from layers.PositionalEncoding import PositionalEncoding
+import utils.constants import PAD_IDX
 
 class Encoder(nn.Module):
     def __init__(self, 
@@ -49,33 +50,27 @@ class Encoder(nn.Module):
 
 
 class EncoderRNN(nn.Module):
-    def __init__(self, input_dim, emb_dim, enc_hid_dim, dec_hid_dim, dropout):
-        super().__init__()
+    """Encodes a sequence of word embeddings"""
+    def __init__(self, input_size, hidden_size, num_layers=1, dropout=0., max_length = 100):
+        super(EncoderRNN, self).__init__()
+        self.num_layers = num_layers
+        self.rnn = nn.GRU(input_size, hidden_size, num_layers, 
+                          batch_first=True, bidirectional=True, dropout=dropout)
+        self.max_length = max_length
         
-        self.embedding = nn.Embedding(input_dim, emb_dim)
-        
-        self.rnn = nn.GRU(emb_dim, enc_hid_dim, bidirectional = True)
-        
-        self.fc = nn.Linear(enc_hid_dim * 2, dec_hid_dim)
-        
-        self.dropout = nn.Dropout(dropout)
-        
-    def forward(self, src, src_len):
-        
-        #src = [src len, batch size]
-        #src_len = [batch size]
-        
-        embedded = self.dropout(self.embedding(src))
-                
-        packed_embedded = nn.utils.rnn.pack_padded_sequence(embedded, src_len)
-                
-        packed_outputs, hidden = self.rnn(packed_embedded)
-                                 
-        #packed_outputs is a packed sequence containing all hidden states
-        #hidden is now from the final non-padded element in the batch
-            
-        outputs, _ = nn.utils.rnn.pad_packed_sequence(packed_outputs) 
+    def forward(self, x, mask, lengths):
+        """
+        Applies a bidirectional GRU to sequence of embeddings x.
+        The input mini-batch x needs to be sorted by length.
+        x should have dimensions [batch, time, dim].
+        """
+        packed = pack_padded_sequence(x, lengths, batch_first=True, enforce_sorted = False)
+        output, final = self.rnn(packed)
+        output, _ = pad_packed_sequence(output, batch_first=True, total_length=self.max_length, padding_value=PAD_IDX)
 
-        hidden = torch.tanh(self.fc(torch.cat((hidden[-2,:,:], hidden[-1,:,:]), dim = 1)))
-        
-        return outputs, hidden
+        # we need to manually concatenate the final states for both directions
+        fwd_final = final[0:final.size(0):2]
+        bwd_final = final[1:final.size(0):2]
+        final = torch.cat([fwd_final, bwd_final], dim=2)  # [num_layers, batch, 2*dim]
+
+        return output, final

@@ -63,6 +63,10 @@ parser.add_argument(
   '-dec-dropout', '--decoder_dropout', type=float, required=False, help='Dropout rate in Decoder')
 
 
+parser.add_argument(
+  '-embedding-dropout', '--embedding_dropout', type=float, required=False, help='Dropout rate in the embeddings')
+
+
 # hyper-parameters
 parser.add_argument(
   '-optimizer','--optimizer', type=str, required=False, help='Optimizer that will be used')
