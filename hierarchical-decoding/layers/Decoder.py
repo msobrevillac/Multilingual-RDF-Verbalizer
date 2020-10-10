@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 from layers.PositionalEncoding import PositionalEncoding
 import torch.nn.functional as F
+from utils.util import count_parameters
 
 class Decoder(nn.Module):
     def __init__(self, 
