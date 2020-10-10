@@ -94,7 +94,8 @@ def build_model(args, source_vocabs, target_vocabs, device, max_length , encoder
 	enc = EncoderRNN(args.embedding_size, 
 		args.hidden_size, 
 		args.encoder_layer, 
-		args.encoder_dropout, 
+		args.encoder_dropout,
+		args.layer_normalization,
 		args.max_length).to(device)
 	if encoder is None:
 		enc.apply(initialize_weights);
@@ -110,7 +111,8 @@ def build_model(args, source_vocabs, target_vocabs, device, max_length , encoder
 			attention, 
 			args.decoder_layer,  
 			args.decoder_dropout,
-			attention).to(device)
+			attention,
+			norm=args.layer_normalization).to(device)
 
 	dec.apply(initialize_weights);
 

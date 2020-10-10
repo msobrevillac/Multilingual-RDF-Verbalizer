@@ -52,7 +52,7 @@ class Encoder(nn.Module):
 
 class EncoderRNN(nn.Module):
     """Encodes a sequence of word embeddings"""
-    def __init__(self, input_size, hidden_size, num_layers=1, dropout=0., norm=False max_length = 100):
+    def __init__(self, input_size, hidden_size, num_layers=1, dropout=0., norm=False, max_length = 100):
         super(EncoderRNN, self).__init__()
         self.num_layers = num_layers
         self.rnn = nn.GRU(input_size, hidden_size, num_layers, 
