@@ -79,8 +79,10 @@ class DecoderRNN(nn.Module):
         self.bridge = nn.Linear(2*hidden_size, hidden_size, bias=True) if bridge else None
 
         self.dropout_layer = nn.Dropout(p=dropout)
+        #self.pre_output_layer = nn.Linear(hidden_size + 2*hidden_size + emb_size,
+        #                                  hidden_size, bias=False)
         self.pre_output_layer = nn.Linear(hidden_size + 2*hidden_size + emb_size,
-                                          hidden_size, bias=False)
+                                          emb_size, bias=False)
 
         self.layer_norm = nn.LayerNorm(hidden_size)
         self.norm = norm
@@ -149,12 +151,24 @@ class DecoderRNN(nn.Module):
 
         return torch.tanh(self.bridge(encoder_final))
 
-
+'''
 class Generator(nn.Module):
     """Define standard linear + softmax generation step."""
     def __init__(self, hidden_size, vocab_size):
         super(Generator, self).__init__()
         self.proj = nn.Linear(hidden_size, vocab_size, bias=False)
+
+        print(f'Generator: {count_parameters(self.proj)}')
+
+    def forward(self, x):
+        return F.log_softmax(self.proj(x), dim=-1)
+'''
+
+class Generator(nn.Module):
+    """Define standard linear + softmax generation step."""
+    def __init__(self, emb_size, vocab_size):
+        super(Generator, self).__init__()
+        self.proj = nn.Linear(emb_size, vocab_size, bias=False)
 
         print(f'Generator: {count_parameters(self.proj)}')
 

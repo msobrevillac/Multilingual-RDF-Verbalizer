@@ -115,13 +115,22 @@ def build_model(args, source_vocabs, target_vocabs, device, max_length , encoder
 			norm=args.layer_normalization).to(device)
 
 	dec.apply(initialize_weights);
-
+	'''
 	if args.tie_embeddings:
 		model = Seq2seq(enc, dec, Embedding(input_dim, args.embedding_size, args.embedding_dropout, args.layer_normalization), 
 			Embedding(output_dim, args.embedding_size, args.embedding_dropout, args.layer_normalization), Generator(args.hidden_size, output_dim), True)
 	else:
 		model = Seq2seq(enc, dec, Embedding(input_dim, args.embedding_size, args.embedding_dropout, args.layer_normalization), 
 			Embedding(output_dim, args.embedding_size, args.embedding_dropout, args.layer_normalization), Generator(args.hidden_size, output_dim))
+	'''
+	if args.tie_embeddings:
+		model = Seq2seq(enc, dec, Embedding(input_dim, args.embedding_size, args.embedding_dropout, args.layer_normalization), 
+			Embedding(output_dim, args.embedding_size, args.embedding_dropout, args.layer_normalization), 
+			Generator(args.embedding_size, output_dim), True)
+	else:
+		model = Seq2seq(enc, dec, Embedding(input_dim, args.embedding_size, args.embedding_dropout, args.layer_normalization), 
+			Embedding(output_dim, args.embedding_size, args.embedding_dropout, args.layer_normalization), 
+			Generator(args.embedding_size, output_dim))
 
 	model.to(device)
 
