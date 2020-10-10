@@ -175,7 +175,7 @@ def evaluate(model, loader, loss_compute, device, task_id=0):
 		for i, (src, tgt, src_mask, tgt_mask, src_lengths, tgt_lengths) in enumerate(loader):		
 
 			src = src.to(device)
-			tgt = tgt.to(device)]
+			tgt = tgt.to(device)
 			src_mask = src_mask.to(device)
 			tgt_mask = tgt_mask.to(device)
 
