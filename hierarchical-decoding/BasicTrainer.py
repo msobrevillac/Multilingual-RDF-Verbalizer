@@ -13,6 +13,7 @@ from layers.Encoder import EncoderRNN
 from layers.Decoder import DecoderRNN
 from layers.Decoder import Generator
 from layers.Attention import BahdanauAttention
+from layers.Embedding import Embedding
 
 import torch
 import torch.nn as nn
@@ -101,6 +102,7 @@ def build_model(args, source_vocabs, target_vocabs, device, max_length , encoder
 		enc.load_state_dict(encoder)
 
 	attention = BahdanauAttention(args.hidden_size)
+	attention.apply(initialize_weights)
 
 	output_dim = target_vocabs[0].len()
 	dec = DecoderRNN(args.embedding_size, 
@@ -110,18 +112,14 @@ def build_model(args, source_vocabs, target_vocabs, device, max_length , encoder
 			args.decoder_dropout,
 			attention).to(device)
 
-		#if args.tie_embeddings:
-		#	dec.embedding = enc.embedding
-		#	dec.fc_out.weight = enc.embedding.weight
-
 	dec.apply(initialize_weights);
 
 	if args.tie_embeddings:
-		model = Seq2seq(enc, dec, nn.Embedding(input_dim, args.embedding_size), 
-			nn.Embedding(output_dim, args.embedding_size), Generator(args.hidden_size, output_dim), True)
+		model = Seq2seq(enc, dec, Embedding(input_dim, args.embedding_size, args.embedding_dropout, args.layer_normalization), 
+			Embedding(output_dim, args.embedding_size, args.embedding_dropout, args.layer_normalization), Generator(args.hidden_size, output_dim), True)
 	else:
-		model = Seq2seq(enc, dec, nn.Embedding(input_dim, args.embedding_size), 
-			nn.Embedding(output_dim, args.embedding_size), Generator(args.hidden_size, output_dim))
+		model = Seq2seq(enc, dec, Embedding(input_dim, args.embedding_size, args.embedding_dropout, args.layer_normalization), 
+			Embedding(output_dim, args.embedding_size, args.embedding_dropout, args.layer_normalization), Generator(args.hidden_size, output_dim))
 
 	model.to(device)
 

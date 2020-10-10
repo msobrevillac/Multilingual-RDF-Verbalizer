@@ -15,8 +15,8 @@ class Seq2seq(nn.Module):
         self.generator = generator
 
         if tie_embeddings:
-            self.trg_embed = self.src_embed
-            self.generator.proj.weight = self.src_embed.weight
+            self.trg_embed.embedding = self.src_embed.embedding
+            self.generator.proj.weight = self.src_embed.embedding.weight
         
     def forward(self, src, trg, src_mask, trg_mask, src_lengths, trg_lengths):
         """Take in and process masked src and target sequences."""

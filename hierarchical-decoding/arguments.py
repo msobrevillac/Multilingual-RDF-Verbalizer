@@ -64,8 +64,9 @@ parser.add_argument(
 
 
 parser.add_argument(
-  '-embedding-dropout', '--embedding_dropout', type=float, required=False, help='Dropout rate in the embeddings')
-
+  '-embed-dropout', '--embedding_dropout', type=float, required=False, help='Dropout rate in the embeddings')
+parser.add_argument(
+  '-layer-norm','--layer_normalization', action='store_true', required=False, default=False , help='Layer normalization')
 
 # hyper-parameters
 parser.add_argument(
