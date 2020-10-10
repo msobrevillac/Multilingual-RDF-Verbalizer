@@ -8,7 +8,7 @@ from utils.optimizer import NoamOpt
 from Dataloader import ParallelDataset, get_dataloader
 from Translate import translate
 
-from models.Sequence2Sequence import Seq2Seq
+from models.Sequence2Sequence import Seq2seq
 from layers.Encoder import EncoderRNN
 from layers.Decoder import DecoderRNN
 from layers.Decoder import Generator
