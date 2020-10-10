@@ -102,7 +102,7 @@ def build_model(args, source_vocabs, target_vocabs, device, max_length , encoder
 
 	attention = BahdanauAttention(args.hidden_size)
 
-	output_dim = target_vocab.len()
+	output_dim = target_vocabs[0].len()
 	dec = DecoderRNN(args.embedding_size, 
 			args.hidden_size, 
 			attention, 
