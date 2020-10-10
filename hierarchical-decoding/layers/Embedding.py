@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-
+from utils.util import count_parameters
 
 
 class Embedding(nn.Module):
@@ -9,6 +9,8 @@ class Embedding(nn.Module):
     def __init__(self, input_size, emb_size, dropout=0.0, norm=False):
         super(Embedding, self).__init__()
         self.embedding = nn.Embedding(input_size, emb_size)
+
+        print(f'{counter_parameters(self.embedding)}')
 
         self.dropout = nn.Dropout(dropout)
 
