@@ -169,29 +169,25 @@ def evaluate(model, loader, loss_compute, device, task_id=0):
 	model.eval()  
 	epoch_loss = 0
 	total_tokens = 0
+	count = 0
 	with torch.no_grad():
 
-		for i, (src, tgt) in enumerate(loader):		
+		for i, (src, tgt, src_mask, tgt_mask, src_lengths, tgt_lengths) in enumerate(loader):		
 
 			src = src.to(device)
-			tgt = tgt.to(device)
-			output, _ = model(src, tgt[:,:-1], task_id=task_id)
-			#output = [batch size, tgt len - 1, output dim]
-			#tgt = [batch size, tgt len]
-			output_dim = output.shape[-1]
-			output = output.contiguous().view(-1, output_dim)
-			tgt = tgt[:,1:].contiguous().view(-1)
+			tgt = tgt.to(device)]
+			src_mask = src_mask.to(device)
+			tgt_mask = tgt_mask.to(device)
 
-			#output = [batch size * tgt len - 1, output dim]
-			#tgt = [batch size * tgt len - 1]
+			out, _, pre_output = model.forward(src, tgt,
+											src_mask, tgt_mask,
+											src_lengths, tgt_lengths)
 
-			loss = loss_compute(output, tgt)
+			loss = loss_compute(pre_output, tgt)
 			epoch_loss += loss
+			count += 1
 
-		#if torch.equal(model.decoders[task_id].fc_out.weight, model.encoder.tok_embedding.weight):
-		#	print("decoder output and encoder embeddings are the same")
-
-	return epoch_loss / len(loader)    	
+	return epoch_loss / count   	
 
 
 def run_translate(model, source_vocab, target_vocabs, save_dir, device, beam_size, filenames, max_length):
@@ -320,12 +316,12 @@ def train(args):
 				print_loss_total = 0
 				print(f'Task: {task_id:d} | Step: {_iter:d} | Train Loss: {train_loss:.3f} | Train PPL: {math.exp(train_loss):7.3f}')
 
-	'''
 			if _iter % args.eval_steps == 0:
 				print("Evaluating...")
-				valid_loss = evaluate(multitask_model, dev_loaders[task_id], LossCompute(criterions[task_id], None), \
+				valid_loss = evaluate(seq2seq_model, dev_loaders[task_id], LossCompute(seq2seq_model.generator, criterions[task_id], None), \
 	                            device, task_id=task_id)
 				print(f'Task: {task_id:d} | Val. Loss: {valid_loss:.3f} |  Val. PPL: {math.exp(valid_loss):7.3f}')
+
 				if valid_loss < best_valid_loss[task_id]:
 					print(f'The loss decreased from {best_valid_loss[task_id]:.3f} to {valid_loss:.3f} in the task {task_id}... saving checkpoint')
 					patience = 30
@@ -342,6 +338,7 @@ def train(args):
 				if n_tasks > 1:
 					print("Changing to the next task ...")
 					task_id = (0 if task_id == n_tasks - 1 else task_id + 1)
+	'''
 
 	try:
 		multitask_model.load_state_dict(torch.load(args.save_dir + 'model.pt'))
