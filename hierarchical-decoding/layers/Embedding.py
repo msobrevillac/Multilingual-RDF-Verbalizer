@@ -10,7 +10,7 @@ class Embedding(nn.Module):
         super(Embedding, self).__init__()
         self.embedding = nn.Embedding(input_size, emb_size)
 
-        print(f'{counter_parameters(self.embedding)}')
+        print(f'{count_parameters(self.embedding)}')
 
         self.dropout = nn.Dropout(dropout)
 

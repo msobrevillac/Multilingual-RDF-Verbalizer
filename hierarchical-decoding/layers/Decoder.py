@@ -156,7 +156,7 @@ class Generator(nn.Module):
         super(Generator, self).__init__()
         self.proj = nn.Linear(hidden_size, vocab_size, bias=False)
 
-        print(f'Generator: {counter_parameters(self.proj)}')
+        print(f'Generator: {count_parameters(self.proj)}')
 
     def forward(self, x):
         return F.log_softmax(self.proj(x), dim=-1)
