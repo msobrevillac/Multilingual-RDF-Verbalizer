@@ -117,10 +117,10 @@ def build_model(args, source_vocabs, target_vocabs, device, max_length , encoder
 	dec.apply(initialize_weights);
 
 	if args.tie_embeddings:
-        model = Seq2seq(enc, dec, nn.Embedding(input_dim, args.embedding_size), 
+		model = Seq2seq(enc, dec, nn.Embedding(input_dim, args.embedding_size), 
 			nn.Embedding(output_dime, args.embedding_size), Generator(args.hidden_size, output_dim), True)
 	else:
-        model = Seq2seq(enc, dec, nn.Embedding(input_dim, args.embedding_size), 
+		model = Seq2seq(enc, dec, nn.Embedding(input_dim, args.embedding_size), 
 			nn.Embedding(output_dime, args.embedding_size), Generator(args.hidden_size, output_dim))
 
 	model.to(device)
