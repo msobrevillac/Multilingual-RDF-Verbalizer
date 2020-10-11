@@ -145,7 +145,7 @@ def translate_rnn_sentence_beam(model, task_id, sentence, source_vocab, target_v
 	src_mask = [0 if "<pad>" == token else 1 for token in tokens]
 
 	src_length = 0
-	for token in src_tokens:
+	for token in tokens:
 		if token != "<pad>":
 			src_length += 1
 
