@@ -156,7 +156,7 @@ def save_params(args, params_file, type="rnn"):
     params['tie_embeddings'] = args.tie_embeddings
     params['type'] = type
     params['embedding_dropout'] = args.embedding_dropout
-    params['layer_norm'] = args.layer_norm
+    params['layer_norm'] = args.layer_normalization
     params['embedding_size'] = args.embedding_size
 
     if args.mtl:
