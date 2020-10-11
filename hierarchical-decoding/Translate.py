@@ -180,7 +180,7 @@ def translate_rnn_sentence_beam(model, task_id, sentence, source_vocab, target_v
 		if (n.wordid[-1] == constants.EOS_IDX and n.prevNode != None) or len(trg_indexes) == max_length:
 			endnodes.append((score, n))
 			break
-		print(trg_indexes)  
+		#print(trg_indexes)  
 
 		last_token = trg_indexes[-1]
 		prev_y = torch.LongTensor([last_token]).unsqueeze(0).to(device)
