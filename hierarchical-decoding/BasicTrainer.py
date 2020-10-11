@@ -153,7 +153,7 @@ def train_step(model, loader, loss_compute, device, task_id = 0):
 								src_mask, tgt_mask,
 								src_lengths, tgt_lengths)
 
-	loss = loss_compute(pre_output, tgt)
+	loss = loss_compute(pre_output, tgt, src.size()[0])
 
 	return loss
 

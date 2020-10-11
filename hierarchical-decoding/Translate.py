@@ -148,8 +148,9 @@ def translate_rnn_sentence_beam(model, task_id, sentence, source_vocab, target_v
 	for token in tokens:
 		if token != "<pad>":
 			src_length += 1
+	src_length = [src_length]
 
-	src_mask = torch.tensor(src_mask).unsqueeze(-2)
+	src_mask = torch.tensor(src_mask).unsqueeze(-2).to(device)
 	# Finish processing INPUT
 
 	encoder_hidden, encoder_final = None, None
@@ -179,12 +180,14 @@ def translate_rnn_sentence_beam(model, task_id, sentence, source_vocab, target_v
 		if (n.wordid[-1] == constants.EOS_IDX and n.prevNode != None) or len(trg_indexes) == max_length:
 			endnodes.append((score, n))
 			break
+		print(trg_indexes)  
 
-		prev_y = torch.LongTensor(trg_indexes[-1]).unsqueeze(0).to(device)
-		trg_mask = torch.ones_like([1])
-		print(prev_y)
-		print(trg_mask)
-
+		last_token = trg_indexes[-1]
+		prev_y = torch.LongTensor([last_token]).unsqueeze(0).to(device)
+		trg_mask = torch.ones_like(torch.LongTensor([[1]])).to(device)
+		#print(prev_y)
+		#print(trg_mask)
+		hidden = None
 		with torch.no_grad():
 			# decode for one step using decoder
 			out, hidden, pre_output = model.decode(
@@ -196,9 +199,9 @@ def translate_rnn_sentence_beam(model, task_id, sentence, source_vocab, target_v
 		log_prob, indexes = torch.topk(output, beam_size)
 		nextnodes = []
 		for new_k in range(beam_size):
-			decoded_t = indexes[0][-1][new_k].item()
-			log_p = log_prob[0][-1][new_k].item()
-
+			decoded_t = indexes[-1][new_k].item()
+			log_p = log_prob[-1][new_k].item()
+			#print(">>> ", new_k, "\t", decoded_t, "\t", log_p)
 			node = BeamSearchNode(trg_indexes, trg_indexes + [decoded_t], n.logp + log_p, n.leng + 1)
 			score = -node.eval()
 			nextnodes.append((score, node))
@@ -441,4 +444,5 @@ if __name__ == "__main__":
 	global step
 
 	run(args)
+
 
