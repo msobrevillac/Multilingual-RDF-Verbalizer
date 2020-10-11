@@ -142,7 +142,7 @@ def train_step(model, loader, loss_compute, device, task_id = 0):
 
 	model.train()
 
-	(src, tgt, src_mask, tgt_mask, src_lengths, tgt_lengths) = next(iter(loader))
+	(src, tgt, src_mask, tgt_mask, src_lengths, tgt_lengths, tgt_pred) = next(iter(loader))
 
 	src = src.to(device)
 	tgt = tgt.to(device)
@@ -153,7 +153,7 @@ def train_step(model, loader, loss_compute, device, task_id = 0):
 								src_mask, tgt_mask,
 								src_lengths, tgt_lengths)
 
-	loss = loss_compute(pre_output, tgt, src.size()[0])
+	loss = loss_compute(pre_output, tgt_pred, src.size()[0])
 
 	return loss
 
@@ -174,7 +174,7 @@ def evaluate(model, loader, loss_compute, device, task_id=0):
 	count = 0
 	with torch.no_grad():
 
-		for i, (src, tgt, src_mask, tgt_mask, src_lengths, tgt_lengths) in enumerate(loader):		
+		for i, (src, tgt, src_mask, tgt_mask, src_lengths, tgt_lengths, tgt_pred) in enumerate(loader):		
 
 			src = src.to(device)
 			tgt = tgt.to(device)
@@ -185,7 +185,7 @@ def evaluate(model, loader, loss_compute, device, task_id=0):
 											src_mask, tgt_mask,
 											src_lengths, tgt_lengths)
 
-			loss = loss_compute(pre_output, tgt)
+			loss = loss_compute(pre_output, tgt_pred)
 			epoch_loss += loss
 			count += 1
 
