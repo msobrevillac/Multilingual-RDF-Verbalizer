@@ -141,7 +141,7 @@ def delexicalize_verb(template):
 def load_params(params_file):
     return json.load(open(params_file))
 
-def save_params(args, params_file):
+def save_params(args, params_file, type="rnn"):
     params = {}
     params['hidden_size'] = args.hidden_size
     params['encoder_ff_size'] = args.encoder_ff_size
@@ -154,6 +154,10 @@ def save_params(args, params_file):
     params['decoder_dropout'] = args.decoder_dropout
     params['max_length'] = args.max_length
     params['tie_embeddings'] = args.tie_embeddings
+    params['type'] = type
+    params['embedding_dropout'] = args.embedding_dropout
+    params['layer_norm'] = args.layer_norm
+    params['embedding_size'] = args.embedding_size
 
     if args.mtl:
         params['number_encoder'] = 1

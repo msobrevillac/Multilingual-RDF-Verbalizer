@@ -14,7 +14,7 @@ from layers.Decoder import Decoder
 
 from queue import PriorityQueue
 
-def translate(model, task_id, sentences, source_vocab, target_vocab, device, max_length=180, beam_size=None):
+def translate(model, task_id, sentences, source_vocab, target_vocab, device, max_length=180, beam_size=None, type="transformer"):
 	'''
 		Function that translates a set of triple sets
 		model:
@@ -26,18 +26,22 @@ def translate(model, task_id, sentences, source_vocab, target_vocab, device, max
 		max_length:
 		beam_size:
 	'''
-
 	outputs = []
-	if beam_size == 1:
-		print("Using greedy search")
+	if type == "rnn":
 		for sentence in sentences:
-			outputs.append(translate_sentence(model, task_id, sentence, source_vocab, target_vocab, device,
-					 max_length = max_length))
+			outputs.append(translate_rnn_sentence_beam(model, task_id, sentence, source_vocab, target_vocab, device,
+								 beam_size = beam_size, max_length=max_length))		
 	else:
-		print("Using beam search")
-		for sentence in sentences:
-			outputs.append(translate_sentence_beam(model, task_id, sentence, source_vocab, target_vocab, device,
-								 beam_size = beam_size, max_length=max_length))
+		if beam_size == 1:
+			print("Using greedy search")
+			for sentence in sentences:
+				outputs.append(translate_sentence(model, task_id, sentence, source_vocab, target_vocab, device,
+						 max_length = max_length))
+		else:
+			print("Using beam search")
+			for sentence in sentences:
+				outputs.append(translate_sentence_beam(model, task_id, sentence, source_vocab, target_vocab, device,
+									 beam_size = beam_size, max_length=max_length))
 	return outputs
 
 
@@ -106,6 +110,111 @@ def translate_sentence(model, task_id, sentence, source_vocab, target_vocab, dev
 
 		if pred_token == constants.EOS_IDX:
 			break
+
+	trg_tokens = [target_vocab.itos(i) for i in trg_indexes]
+
+	return ' '.join(trg_tokens[1:])
+
+
+def translate_rnn_sentence_beam(model, task_id, sentence, source_vocab, target_vocab, device, beam_size = 5, max_length = 180):
+	'''
+		This function translates an specific sentence
+		model:
+		task_id:
+		sentences:
+		source_vocab:
+		target_vocab:
+		device:
+		max_length:
+		beam_size:
+	'''
+
+	model.eval()
+
+	## Processing INPUT
+	tokens = [token.lower() for token in sentence.split()]
+	tokens = [constants.SOS_STR] + tokens + [constants.EOS_STR]
+	if len(tokens) < max_length:
+		tokens = tokens + [constants.PAD_STR for _ in range(max_length - len(tokens))]
+	else:
+		tokens = tokens[:max_length-1] + [constants.EOS_STR]
+
+	src_indexes = [source_vocab.stoi(token) for token in tokens]
+	src_tensor = torch.LongTensor(src_indexes).unsqueeze(0).to(device)
+
+	src_mask = [0 if "<pad>" == token else 1 for token in tokens]
+
+	src_length = 0
+	for token in src_tokens:
+		if token != "<pad>":
+			src_length += 1
+
+	src_mask = torch.tensor(src_mask).unsqueeze(-2)
+	# Finish processing INPUT
+
+	encoder_hidden, encoder_final = None, None
+	with torch.no_grad():
+		encoder_hidden, encoder_final = model.encode(src_tensor, src_mask, src_length)
+
+	trg_indexes = [constants.SOS_IDX]
+
+	endnodes = []
+
+	# starting node -  hidden vector, previous node, word id, logp, length
+	node = BeamSearchNode(None, trg_indexes, 0, 1)
+	nodes = PriorityQueue()
+
+	# start the queue
+	nodes.put((-node.eval(), node))
+	qsize = 1
+
+	while True:
+		# give up when decoding takes too long
+		if qsize > 2000: break
+
+		# fetch the best node
+		score, n = nodes.get()
+		trg_indexes = n.wordid
+
+		if (n.wordid[-1] == constants.EOS_IDX and n.prevNode != None) or len(trg_indexes) == max_length:
+			endnodes.append((score, n))
+			break
+
+		prev_y = torch.LongTensor(trg_indexes[-1]).unsqueeze(0).to(device)
+		trg_mask = torch.ones_like([1])
+		print(prev_y)
+		print(trg_mask)
+
+		with torch.no_grad():
+			# decode for one step using decoder
+			out, hidden, pre_output = model.decode(
+										encoder_hidden, encoder_final, src_mask,
+										prev_y, trg_mask, hidden)
+			#output, attention = model.decode(trg_tensor, enc_src, trg_mask, src_mask)
+			output = model.generator(pre_output[:, -1])
+
+		log_prob, indexes = torch.topk(output, beam_size)
+		nextnodes = []
+		for new_k in range(beam_size):
+			decoded_t = indexes[0][-1][new_k].item()
+			log_p = log_prob[0][-1][new_k].item()
+
+			node = BeamSearchNode(trg_indexes, trg_indexes + [decoded_t], n.logp + log_p, n.leng + 1)
+			score = -node.eval()
+			nextnodes.append((score, node))
+
+		# put them into queue
+		for i in range(len(nextnodes)):
+			score, nn = nextnodes[i]
+			nodes.put((score, nn))
+			# increase qsize
+		qsize += len(nextnodes) - 1
+
+	if len(endnodes) == 0:
+		score, n = nodes.get()
+		trg_indexes = n.wordid
+	else:
+		trg_indexes = endnodes[0][1].wordid
 
 	trg_tokens = [target_vocab.itos(i) for i in trg_indexes]
 

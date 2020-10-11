@@ -115,14 +115,7 @@ def build_model(args, source_vocabs, target_vocabs, device, max_length , encoder
 			norm=args.layer_normalization).to(device)
 
 	dec.apply(initialize_weights);
-	'''
-	if args.tie_embeddings:
-		model = Seq2seq(enc, dec, Embedding(input_dim, args.embedding_size, args.embedding_dropout, args.layer_normalization), 
-			Embedding(output_dim, args.embedding_size, args.embedding_dropout, args.layer_normalization), Generator(args.hidden_size, output_dim), True)
-	else:
-		model = Seq2seq(enc, dec, Embedding(input_dim, args.embedding_size, args.embedding_dropout, args.layer_normalization), 
-			Embedding(output_dim, args.embedding_size, args.embedding_dropout, args.layer_normalization), Generator(args.hidden_size, output_dim))
-	'''
+
 	if args.tie_embeddings:
 		model = Seq2seq(enc, dec, Embedding(input_dim, args.embedding_size, args.embedding_dropout, args.layer_normalization), 
 			Embedding(output_dim, args.embedding_size, args.embedding_dropout, args.layer_normalization), 
@@ -219,7 +212,7 @@ def run_translate(model, source_vocab, target_vocabs, save_dir, device, beam_siz
 		fout = open(save_dir + name + "." + str(index) + ".out", "w")
 		with open(eval_name, "r") as f:
 			outputs = translate(model, index, f, source_vocab, target_vocabs[index], device, 
-							beam_size=beam_size, max_length=max_length)
+							beam_size=beam_size, max_length=max_length, type="rnn")
 			for output in outputs:
 				fout.write(output.replace("<eos>","").strip() + "\n")
 		fout.close()
@@ -347,15 +340,15 @@ def train(args):
 				if n_tasks > 1:
 					print("Changing to the next task ...")
 					task_id = (0 if task_id == n_tasks - 1 else task_id + 1)
-	'''
+
 
 	try:
-		multitask_model.load_state_dict(torch.load(args.save_dir + 'model.pt'))
+		seq2seq_model.load_state_dict(torch.load(args.save_dir + 'model.pt'))
 	except:
 		print(f'There is no model in the following path {args.save_dir}')
 		return
 
 	print("Evaluating and testing")
-	run_translate(multitask_model, source_vocabs[0], target_vocabs, args.save_dir, device, args.beam_size, args.eval, max_length=max_length)
-	run_translate(multitask_model, source_vocabs[0], target_vocabs, args.save_dir, device, args.beam_size, args.test, max_length=max_length)
-	'''
+	run_translate(seq2seq_model, source_vocabs[0], target_vocabs, args.save_dir, device, args.beam_size, args.eval, max_length=max_length)
+	run_translate(seq2seq_model, source_vocabs[0], target_vocabs, args.save_dir, device, args.beam_size, args.test, max_length=max_length)
+
