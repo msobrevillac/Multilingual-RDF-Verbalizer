@@ -148,6 +148,7 @@ def train_step(model, loader, loss_compute, device, task_id = 0):
 	tgt = tgt.to(device)
 	src_mask = src_mask.to(device)
 	tgt_mask = tgt_mask.to(device)
+	tgt_pred = tgt_pred.to(device)
 
 	out, _, pre_output = model.forward(src, tgt,
 								src_mask, tgt_mask,
@@ -180,6 +181,7 @@ def evaluate(model, loader, loss_compute, device, task_id=0):
 			tgt = tgt.to(device)
 			src_mask = src_mask.to(device)
 			tgt_mask = tgt_mask.to(device)
+			tgt_pred = tgt_pred.to(device)
 
 			out, _, pre_output = model.forward(src, tgt,
 											src_mask, tgt_mask,
