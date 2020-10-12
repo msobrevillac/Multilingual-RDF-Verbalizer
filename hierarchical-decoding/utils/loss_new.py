@@ -11,16 +11,20 @@ def reduce_loss(loss, reduction='mean'):
 # Implementation found at 
 #https://medium.com/towards-artificial-intelligence/how-to-use-label-smoothing-for-regularization-aa349f7f1dbb
 class LabelSmoothing(nn.Module):
-    def __init__(self, size, padding_idx, smoothing=0.0, reduction='mean'):
+    def __init__(self, size, padding_idx, smoothing=0.0, reduction='sum'):
         super().__init__()
         self.smoothing = smoothing
         self.reduction = reduction
+        self.padding_idx = padding_idx
     
     def forward(self, x, target):
         n = x.size()[-1]
+        print("x: ", x)
+        print("target: ", target)
         #log_preds = F.log_softmax(preds, dim=-1) #I removed the log_softmax because this is put in the decoder
         loss = reduce_loss(-x.sum(dim=-1), self.reduction)
-        nll = F.nll_loss(x, target, reduction=self.reduction)
+        print("prev_loss: ", loss)
+        nll = F.nll_loss(x, target, ignore_index=self.padding_idx, reduction=self.reduction)
         return linear_combination(loss/n, nll, self.smoothing)
 
 
