@@ -118,9 +118,9 @@ class DecoderRNN(nn.Module):
             max_len = trg_mask.size(-1)
 
         # initialize decoder hidden state
-        if hidden is None:
+        if hidden is None:       
             #hidden = self.init_hidden(encoder_final)
-            hidden = self.init_hidden(encoder_hidden)
+            hidden = self.init_hidden(encoder_hidden) # now it is similar to Nematus init decoder
         
         # pre-compute projected encoder hidden states
         # (the "keys" for the attention mechanism)
@@ -153,14 +153,17 @@ class DecoderRNN(nn.Module):
         return torch.tanh(self.bridge(encoder_final))
     '''
 
+    # we init the decoder hidden state using the mean of the encoder hidden states (in a similar way as Nematus paper)
     def init_hidden(self, encoder_hidden):
         """Returns the initial decoder state,
         conditioned on the final encoder state."""
 
-        if encoder_final is None:
+        #if encoder_final is None:
+        if encoder_hidden is None:        
             return None  # start with zeros
-        print(encoder_hidden.size())
-        return torch.tanh(self.bridge(encoder_hidden))
+        mean_encoder_hidden = torch.mean(encoder_hidden,dim=1).unsqueeze(0)
+        #return torch.tanh(self.bridge(encoder_hidden))
+        return torch.tanh(self.bridge(mean_encoder_hidden))        
 
 
 class Generator(nn.Module):
@@ -171,3 +174,4 @@ class Generator(nn.Module):
 
     def forward(self, x):
         return F.log_softmax(self.proj(x), dim=-1)
+
