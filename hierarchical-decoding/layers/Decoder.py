@@ -64,7 +64,7 @@ class DecoderRNN(nn.Module):
     """A conditional RNN decoder with attention."""
     
     def __init__(self, emb_size, hidden_size, attention, num_layers=1, dropout=0.5,
-                 bridge=False, norm=False):
+                 bridge=True, norm=False):
         super(DecoderRNN, self).__init__()
         
         self.hidden_size = hidden_size
@@ -119,7 +119,8 @@ class DecoderRNN(nn.Module):
 
         # initialize decoder hidden state
         if hidden is None:
-            hidden = self.init_hidden(encoder_final)
+            #hidden = self.init_hidden(encoder_final)
+            hidden = self.init_hidden(encoder_hidden)
         
         # pre-compute projected encoder hidden states
         # (the "keys" for the attention mechanism)
@@ -141,7 +142,7 @@ class DecoderRNN(nn.Module):
         decoder_states = torch.cat(decoder_states, dim=1)
         pre_output_vectors = torch.cat(pre_output_vectors, dim=1)
         return decoder_states, hidden, pre_output_vectors  # [B, N, D]
-
+    '''
     def init_hidden(self, encoder_final):
         """Returns the initial decoder state,
         conditioned on the final encoder state."""
@@ -150,19 +151,17 @@ class DecoderRNN(nn.Module):
             return None  # start with zeros
 
         return torch.tanh(self.bridge(encoder_final))
+    '''
 
-'''
-class Generator(nn.Module):
-    """Define standard linear + softmax generation step."""
-    def __init__(self, hidden_size, vocab_size):
-        super(Generator, self).__init__()
-        self.proj = nn.Linear(hidden_size, vocab_size, bias=False)
+    def init_hidden(self, encoder_hidden):
+        """Returns the initial decoder state,
+        conditioned on the final encoder state."""
 
-        print(f'Generator: {count_parameters(self.proj)}')
+        if encoder_final is None:
+            return None  # start with zeros
+        print(encoder_hidden.size())
+        return torch.tanh(self.bridge(encoder_hidden))
 
-    def forward(self, x):
-        return F.log_softmax(self.proj(x), dim=-1)
-'''
 
 class Generator(nn.Module):
     """Define standard linear + softmax generation step."""
