@@ -284,7 +284,7 @@ def train(args):
                                         for target_vocab in target_vocabs]
 
 	# Default optimizer
-	optimizer = torch.optim.Adam(seq2seq_model.parameters(), betas=(0.9, 0.98), eps=1e-09)
+	optimizer = torch.optim.Adam(seq2seq_model.parameters(), lr=0.0001, betas=(0.9, 0.98), eps=1e-09)
 	#model_opts = [NoamOpt(args.hidden_size, args.warmup_steps, optimizer) for _ in target_vocabs]
 	model_opts = [optimizer for _ in target_vocabs]
 
