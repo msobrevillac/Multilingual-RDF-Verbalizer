@@ -285,7 +285,8 @@ def train(args):
 
 	# Default optimizer
 	optimizer = torch.optim.Adam(seq2seq_model.parameters(), betas=(0.9, 0.98), eps=1e-09)
-	model_opts = [NoamOpt(args.hidden_size, args.warmup_steps, optimizer) for _ in target_vocabs]
+	#model_opts = [NoamOpt(args.hidden_size, args.warmup_steps, optimizer) for _ in target_vocabs]
+	model_opts = [optimizer for _ in target_vocabs]
 
 	task_id = 0
 	print_loss_total = 0  # Reset every print_every
