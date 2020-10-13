@@ -19,11 +19,11 @@ class LabelSmoothing(nn.Module):
     
     def forward(self, x, target):
         n = x.size()[-1]
-        print("x: ", x)
-        print("target: ", target)
-        #log_preds = F.log_softmax(preds, dim=-1) #I removed the log_softmax because this is put in the decoder
-        loss = reduce_loss(-x.sum(dim=-1), self.reduction)
-        print("prev_loss: ", loss)
+        pred = x.clone()
+        for i, tgt in enumerate(target):
+          if tgt.data == self.padding_idx:
+            pred[i] = 0
+        loss = reduce_loss(-pred.sum(dim=-1), self.reduction)
         nll = F.nll_loss(x, target, ignore_index=self.padding_idx, reduction=self.reduction)
         return linear_combination(loss/n, nll, self.smoothing)
 

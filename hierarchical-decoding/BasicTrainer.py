@@ -97,13 +97,8 @@ def build_model(args, source_vocabs, target_vocabs, device, max_length , encoder
 		args.encoder_dropout,
 		args.layer_normalization,
 		args.max_length).to(device)
-	if encoder is None:
-		enc.apply(initialize_weights);
-	else:
-		enc.load_state_dict(encoder)
 
 	attention = BahdanauAttention(args.hidden_size)
-	attention.apply(initialize_weights)
 
 	output_dim = target_vocabs[0].len()
 	dec = DecoderRNN(args.embedding_size, 
@@ -114,8 +109,6 @@ def build_model(args, source_vocabs, target_vocabs, device, max_length , encoder
 			attention,
 			norm=args.layer_normalization).to(device)
 
-	dec.apply(initialize_weights);
-
 	if args.tie_embeddings:
 		model = Seq2seq(enc, dec, Embedding(input_dim, args.embedding_size, args.embedding_dropout, args.layer_normalization), 
 			Embedding(output_dim, args.embedding_size, args.embedding_dropout, args.layer_normalization), 
@@ -125,6 +118,7 @@ def build_model(args, source_vocabs, target_vocabs, device, max_length , encoder
 			Embedding(output_dim, args.embedding_size, args.embedding_dropout, args.layer_normalization), 
 			Generator(args.embedding_size, output_dim))
 
+	model.apply(initialize_weights);
 	model.to(device)
 
 	return model
@@ -154,9 +148,9 @@ def train_step(model, loader, loss_compute, device, task_id = 0):
 								src_mask, tgt_mask,
 								src_lengths, tgt_lengths)
 
-	loss = loss_compute(pre_output, tgt_pred, src.size()[0])
+	loss = loss_compute(pre_output, tgt_pred, tgt_lengths.sum())
 
-	return loss
+	return loss/tgt_lengths.sum()
 
 
 def evaluate(model, loader, loss_compute, device, task_id=0):
@@ -172,7 +166,6 @@ def evaluate(model, loader, loss_compute, device, task_id=0):
 	model.eval()  
 	epoch_loss = 0
 	total_tokens = 0
-	count = 0
 	with torch.no_grad():
 
 		for i, (src, tgt, src_mask, tgt_mask, src_lengths, tgt_lengths, tgt_pred) in enumerate(loader):		
@@ -187,11 +180,11 @@ def evaluate(model, loader, loss_compute, device, task_id=0):
 											src_mask, tgt_mask,
 											src_lengths, tgt_lengths)
 
-			loss = loss_compute(pre_output, tgt_pred)
+			loss = loss_compute(pre_output, tgt_pred, tgt_lengths.sum())
 			epoch_loss += loss
-			count += 1
+			total_tokens += tgt_lengths.sum()
 
-	return epoch_loss / count   	
+	return epoch_loss / total_tokens   	
 
 
 def run_translate(model, source_vocab, target_vocabs, save_dir, device, beam_size, filenames, max_length):
@@ -287,13 +280,11 @@ def train(args):
 	print(f'The Decoder has {count_parameters(seq2seq_model.decoder):,} trainable parameters')
 
 
-	# Defining CrossEntropyLoss as default
-	#criterion = nn.CrossEntropyLoss(ignore_index = constants.PAD_IDX)
 	criterions = [LabelSmoothing(size=target_vocab.len(), padding_idx=constants.PAD_IDX, smoothing=0.1) \
                                         for target_vocab in target_vocabs]
 
 	# Default optimizer
-	optimizer = torch.optim.Adam(seq2seq_model.parameters(), lr = learning_rate, betas=(0.9, 0.98), eps=1e-09)
+	optimizer = torch.optim.Adam(seq2seq_model.parameters(), betas=(0.9, 0.98), eps=1e-09)
 	model_opts = [NoamOpt(args.hidden_size, args.warmup_steps, optimizer) for _ in target_vocabs]
 
 	task_id = 0
@@ -318,7 +309,7 @@ def train(args):
 			if _iter % args.print_every == 0:
 				print_loss_avg = print_loss_total / args.print_every
 				print_loss_total = 0
-				print(f'Task: {task_id:d} | Step: {_iter:d} | Train Loss: {train_loss:.3f}') #| Train PPL: {math.exp(train_loss):7.3f}
+				print(f'Task: {task_id:d} | Step: {_iter:d} | Train Loss: {train_loss:.3f} | Train PPL: {math.exp(train_loss):7.3f}') #}
 
 			if _iter % args.eval_steps == 0:
 				print("Evaluating...")
@@ -353,4 +344,5 @@ def train(args):
 	print("Evaluating and testing")
 	run_translate(seq2seq_model, source_vocabs[0], target_vocabs, args.save_dir, device, args.beam_size, args.eval, max_length=max_length)
 	run_translate(seq2seq_model, source_vocabs[0], target_vocabs, args.save_dir, device, args.beam_size, args.test, max_length=max_length)
+
 
