@@ -106,7 +106,6 @@ def build_model(args, source_vocabs, target_vocabs, device, max_length , encoder
 			attention, 
 			args.decoder_layer,  
 			args.decoder_dropout,
-			attention,
 			norm=args.layer_normalization).to(device)
 
 	if args.tie_embeddings:
@@ -148,9 +147,9 @@ def train_step(model, loader, loss_compute, device, task_id = 0):
 								src_mask, tgt_mask,
 								src_lengths, tgt_lengths)
 
-	loss = loss_compute(pre_output, tgt_pred, tgt_lengths.sum())
+	loss = loss_compute(pre_output, tgt_pred, float(tgt_lengths.sum())) #float(src.size()[0])
 
-	return loss/tgt_lengths.sum()
+	return loss, float(tgt_lengths.sum())
 
 
 def evaluate(model, loader, loss_compute, device, task_id=0):
@@ -166,6 +165,7 @@ def evaluate(model, loader, loss_compute, device, task_id=0):
 	model.eval()  
 	epoch_loss = 0
 	total_tokens = 0
+	#nseqs = 0
 	with torch.no_grad():
 
 		for i, (src, tgt, src_mask, tgt_mask, src_lengths, tgt_lengths, tgt_pred) in enumerate(loader):		
@@ -180,11 +180,12 @@ def evaluate(model, loader, loss_compute, device, task_id=0):
 											src_mask, tgt_mask,
 											src_lengths, tgt_lengths)
 
-			loss = loss_compute(pre_output, tgt_pred, tgt_lengths.sum())
+			loss = loss_compute(pre_output, tgt_pred, float(tgt_lengths.sum()))#
 			epoch_loss += loss
+			#nseqs += float(src.size()[0])
 			total_tokens += tgt_lengths.sum()
 
-	return epoch_loss / total_tokens   	
+	return epoch_loss / float(total_tokens)
 
 
 def run_translate(model, source_vocab, target_vocabs, save_dir, device, beam_size, filenames, max_length):
@@ -290,7 +291,7 @@ def train(args):
 
 	task_id = 0
 	print_loss_total = 0  # Reset every print_every
-
+	ntokens = 0
 	n_tasks = len(train_loaders)
 	best_valid_loss = [float('inf') for _ in range(n_tasks)]
 
@@ -302,15 +303,17 @@ def train(args):
 
 		for _iter in range(1, args.steps + 1):
 
-			train_loss = train_step(seq2seq_model, train_loaders[task_id], \
+			train_loss, tokens = train_step(seq2seq_model, train_loaders[task_id], \
                        LossCompute(seq2seq_model.generator, criterions[task_id], model_opts[task_id]), device)
 
 			print_loss_total += train_loss
+			ntokens += tokens
 
 			if _iter % args.print_every == 0:
-				print_loss_avg = print_loss_total / args.print_every
+				print_loss_avg = print_loss_total / float(ntokens) #args.print_every
 				print_loss_total = 0
-				print(f'Task: {task_id:d} | Step: {_iter:d} | Train Loss: {train_loss:.3f} | Train PPL: {math.exp(train_loss):7.3f}') #}
+				ntokens = 0
+				print(f'Task: {task_id:d} | Step: {_iter:d} | Train Loss: {print_loss_avg:.3f} | Train PPL: {math.exp(print_loss_avg):7.3f}') #}
 
 			if _iter % args.eval_steps == 0:
 				print("Evaluating...")

@@ -34,7 +34,7 @@ class BahdanauAttention(nn.Module):
         # Mask out invalid positions.
         # The mask marks valid positions so we invert it using `mask & 0`.
         #print(mask.size())
-        scores.data.masked_fill_(mask == 1, -float('inf'))
+        scores.data.masked_fill_(mask == 0, -float('inf'))
 
         # Turn scores to probabilities.
         alphas = F.softmax(scores, dim=-1)
